@@ -1,0 +1,163 @@
+export type IssueCategory =
+  | "pothole"
+  | "water_leakage"
+  | "streetlight"
+  | "waste"
+  | "drainage"
+  | "road_damage"
+  | "public_safety"
+  | "vegetation"
+  | "electricity"
+  | "graffiti"
+  | "other";
+
+export type IssueStatus =
+  | "reported"
+  | "verified"
+  | "in_progress"
+  | "resolved"
+  | "rejected";
+
+export const CATEGORY_META: Record<
+  IssueCategory,
+  { label: string; icon: string; color: string; department: string }
+> = {
+  pothole: { label: "Pothole", icon: "🕳️", color: "#b45309", department: "Roads & Highways Dept." },
+  water_leakage: { label: "Water Leakage", icon: "💧", color: "#0284c7", department: "Water Supply Board" },
+  streetlight: { label: "Streetlight", icon: "💡", color: "#ca8a04", department: "Electrical Maintenance" },
+  waste: { label: "Waste / Garbage", icon: "🗑️", color: "#15803d", department: "Sanitation Dept." },
+  drainage: { label: "Drainage / Sewage", icon: "🌊", color: "#0e7490", department: "Sewerage Board" },
+  road_damage: { label: "Road Damage", icon: "🚧", color: "#9a3412", department: "Roads & Highways Dept." },
+  public_safety: { label: "Public Safety", icon: "⚠️", color: "#b91c1c", department: "Municipal Safety Cell" },
+  vegetation: { label: "Fallen Tree / Vegetation", icon: "🌳", color: "#166534", department: "Parks & Horticulture" },
+  electricity: { label: "Electricity Hazard", icon: "⚡", color: "#a16207", department: "Power Distribution Co." },
+  graffiti: { label: "Vandalism / Graffiti", icon: "🎨", color: "#7c3aed", department: "Public Works Dept." },
+  other: { label: "Other", icon: "📌", color: "#475569", department: "General Grievance Cell" },
+};
+
+export const STATUS_META: Record<
+  IssueStatus,
+  { label: string; color: string; step: number }
+> = {
+  reported: { label: "Reported", color: "#64748b", step: 0 },
+  verified: { label: "Community Verified", color: "#7c3aed", step: 1 },
+  in_progress: { label: "In Progress", color: "#0284c7", step: 2 },
+  resolved: { label: "Resolved", color: "#16b783", step: 3 },
+  rejected: { label: "Rejected", color: "#dc2626", step: -1 },
+};
+
+export interface GeoLocation {
+  lat: number;
+  lng: number;
+  address: string;
+  ward?: string;
+}
+
+export interface TimelineEvent {
+  id: string;
+  status: IssueStatus | "comment" | "agent";
+  note: string;
+  at: string; // ISO
+  by: string;
+}
+
+export interface ToolCall {
+  name: string;
+  args: Record<string, unknown>;
+  result: unknown;
+}
+
+export interface AgentStep {
+  agent: string;
+  title: string;
+  icon: string;
+  status: "pending" | "running" | "done" | "error";
+  reasoning: string;
+  output: Record<string, unknown>;
+  durationMs: number;
+  /** Tools this agent autonomously called via Gemini function-calling (if any). */
+  toolCalls?: ToolCall[];
+}
+
+export interface AgentAnalysis {
+  steps: AgentStep[];
+  summary: string;
+  confidence: number;
+  isMock: boolean;
+  model: string;
+  draftedComplaint: string;
+  recommendedActions: string[];
+  riskToPublic: string;
+  estimatedCost?: string;
+  dedupeMethod?: "semantic-embeddings" | "geo-keyword";
+  /** The Planner agent's chosen execution route (agent → why). */
+  plan?: { agent: string; reason: string }[];
+  /** Whether the Quality-Review agent corrected an earlier agent's output. */
+  reviewCorrected?: boolean;
+}
+
+export interface ResolutionVerification {
+  verified: boolean;
+  confidence: number;
+  observation: string;
+  isMock: boolean;
+  at: string;
+  afterImageUrl?: string;
+}
+
+export interface Issue {
+  id: string;
+  title: string;
+  description: string;
+  originalDescription?: string;
+  language?: string;
+  category: IssueCategory;
+  subcategory: string;
+  tags: string[];
+  severity: number; // 1-5
+  urgency: "low" | "medium" | "high" | "critical";
+  status: IssueStatus;
+  location: GeoLocation;
+  imageUrl?: string; // emoji/placeholder or data URL
+  reporterId: string;
+  reporterName: string;
+  createdAt: string;
+  updatedAt: string;
+  upvotes: number;
+  confirmations: number;
+  duplicateOf?: string;
+  department: string;
+  slaHours: number;
+  timeline: TimelineEvent[];
+  analysis?: AgentAnalysis;
+  afterImageUrl?: string;
+  resolutionVerification?: ResolutionVerification;
+  /** Crew dispatched by the Municipal Co-pilot (AI action), if any. */
+  assignedCrew?: string;
+  dispatchedAt?: string; // ISO
+}
+
+export interface Badge {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  avatarColor: string;
+  points: number;
+  level: number;
+  reportsCount: number;
+  verificationsCount: number;
+  resolvedCount: number;
+  badges: Badge[];
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  ts?: string;
+}

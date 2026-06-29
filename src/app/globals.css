@@ -1,0 +1,245 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+
+  /* Neutral scale (light). Values are space-separated RGB for <alpha-value>. */
+  --ink-50: 246 247 249;
+  --ink-100: 236 238 242;
+  --ink-200: 212 217 226;
+  --ink-300: 174 183 200;
+  --ink-400: 129 144 168;
+  --ink-500: 98 113 140;
+  --ink-600: 77 90 115;
+  --ink-700: 63 73 93;
+  --ink-800: 55 63 79;
+  --ink-900: 15 23 41;
+  --ink-950: 8 13 24;
+
+  /* Elevated surface (cards, inputs) */
+  --surface: 255 255 255;
+
+  /* ---- Liquid Glass (light) ---- */
+  --glass-bg: rgba(255, 255, 255, 0.42);
+  --glass-bg-strong: rgba(255, 255, 255, 0.68);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-blur: 14px;
+  --glass-saturate: 180%;
+  --glass-bright: 1.08;
+  /* Diagonal specular sheen swept across the pane */
+  --glass-sheen: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0) 26%,
+    rgba(255, 255, 255, 0) 72%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  /* Drop shadow + glassy bevel rim (top bright, sides soft) */
+  --glass-shadow:
+    0 8px 32px -10px rgba(8, 13, 24, 0.28),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.3),
+    inset 1px 0 1px rgba(255, 255, 255, 0.45),
+    inset -1px 0 1px rgba(255, 255, 255, 0.45);
+  /* Lighter bevel for small controls (no big drop shadow) */
+  --glass-shadow-sm:
+    0 1px 2px rgba(8, 13, 24, 0.08),
+    inset 0 1px 1px rgba(255, 255, 255, 0.85),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.25);
+}
+
+.dark {
+  /* Inverted neutral scale: semantics flip automatically (text-ink-900 -> light, bg-ink-50 -> dark). */
+  --ink-50: 12 18 32;
+  --ink-100: 22 29 45;
+  --ink-200: 45 54 73;
+  --ink-300: 63 73 93;
+  --ink-400: 100 114 138;
+  --ink-500: 130 144 168;
+  --ink-600: 156 168 189;
+  --ink-700: 186 195 211;
+  --ink-800: 212 217 226;
+  --ink-900: 233 236 242;
+  --ink-950: 246 247 249;
+
+  --surface: 22 29 45;
+
+  /* ---- Liquid Glass (dark) ---- */
+  --glass-bg: rgba(30, 41, 61, 0.42);
+  --glass-bg-strong: rgba(30, 41, 61, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-blur: 16px;
+  --glass-saturate: 165%;
+  --glass-bright: 1.14;
+  --glass-sheen: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0) 24%,
+    rgba(255, 255, 255, 0) 74%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  --glass-shadow:
+    0 14px 44px -12px rgba(0, 0, 0, 0.65),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.05),
+    inset 1px 0 1px rgba(255, 255, 255, 0.08),
+    inset -1px 0 1px rgba(255, 255, 255, 0.08);
+  --glass-shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.16),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.04);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-ink-50 text-ink-900 antialiased;
+  background-image:
+    radial-gradient(42rem 42rem at 6% -6%, rgba(22, 183, 131, 0.16), transparent 60%),
+    radial-gradient(40rem 40rem at 104% 2%, rgba(2, 132, 199, 0.15), transparent 58%),
+    radial-gradient(46rem 46rem at 50% 116%, rgba(124, 58, 237, 0.1), transparent 60%);
+  background-attachment: fixed;
+}
+
+.dark body {
+  background-image:
+    radial-gradient(42rem 42rem at 6% -6%, rgba(22, 183, 131, 0.24), transparent 60%),
+    radial-gradient(40rem 40rem at 104% 2%, rgba(2, 132, 199, 0.2), transparent 58%),
+    radial-gradient(46rem 46rem at 50% 116%, rgba(124, 58, 237, 0.18), transparent 60%);
+}
+
+@layer components {
+  /* ---- Liquid Glass primitives ----
+     Real Apple-style glass = backdrop blur + saturate/brightness + an SVG
+     feDisplacementMap (#liquid-glass) for edge refraction (Chromium; Safari/FF
+     gracefully fall back to frosted), plus a specular bevel rim + diagonal sheen.
+
+     .glass        -> refractive frosted panel (hero, large surfaces)
+     .glass-strong -> refractive, higher opacity for text-dense overlays
+     .glass-bar    -> refractive chrome bar (navbar / footer, no radius)
+     .card         -> frosted + bevel content panel (no refraction, perf-friendly)
+     .glass-control-> light frost for inputs / chips / small controls */
+  .glass,
+  .glass-strong,
+  .glass-bar,
+  .card,
+  .glass-control {
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    background-image: var(--glass-sheen);
+  }
+  .glass,
+  .glass-bar,
+  .card {
+    background-color: var(--glass-bg);
+  }
+  .glass-strong {
+    background-color: var(--glass-bg-strong);
+  }
+  /* Refractive surfaces */
+  .glass,
+  .glass-strong,
+  .glass-bar {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+    backdrop-filter: url(#liquid-glass) blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  }
+  /* Non-refractive frosted surfaces (kept crisp + cheap) */
+  .card,
+  .glass-control {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
+  }
+  .card {
+    border-radius: 1rem;
+  }
+  .glass-control {
+    background-color: var(--glass-bg-strong);
+    box-shadow: var(--glass-shadow-sm);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-brand-400/50 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700 shadow-[0_8px_24px_-8px_rgba(10,147,107,0.6)];
+  }
+  .btn-ghost {
+    @apply btn glass-control text-ink-700 hover:text-ink-900;
+  }
+  .btn-ghost:hover {
+    border-color: rgb(var(--ink-300));
+  }
+  .btn-dark {
+    @apply btn bg-slate-800 text-white hover:bg-slate-700;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+  .label {
+    @apply text-xs font-semibold uppercase tracking-wide text-ink-400;
+  }
+  .input {
+    @apply glass-control w-full rounded-xl px-4 py-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-400/30;
+  }
+  /* Select with a custom chevron tucked next to the text (instead of the native arrow at the far right) */
+  .select {
+    @apply input w-auto;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24' stroke='%23818c9c' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 9l6 6 6-6'/%3E%3C/svg%3E"), var(--glass-sheen);
+    background-repeat: no-repeat, no-repeat;
+    background-position: right 0.6rem center, 0 0;
+    background-size: 0.9rem, auto;
+  }
+}
+
+/* Leaflet tweaks */
+.leaflet-container {
+  font-family: var(--font-sans);
+  border-radius: 1rem;
+  z-index: 0;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 0.85rem;
+}
+.dark .leaflet-popup-content-wrapper,
+.dark .leaflet-popup-tip {
+  background: rgb(var(--surface));
+  color: rgb(var(--ink-900));
+}
+.dark .leaflet-container a.leaflet-popup-close-button {
+  color: rgb(var(--ink-500));
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-ink-300;
+}
+
+.gradient-text {
+  @apply bg-gradient-to-r from-brand-600 via-brand-500 to-sky-500 bg-clip-text text-transparent;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
