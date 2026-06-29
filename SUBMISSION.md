@@ -47,6 +47,6 @@ On the municipal side, a **Co-pilot Agent** triages the entire open queue into a
 - (Production-ready) **Firestore / Secret Manager** abstractions for durable storage and secret handling.
 
 ## Links
-- **Deployed Application:** <add Cloud Run URL>
-- **GitHub Repository:** <add repo URL>
+- **Deployed Application:** https://civicpulse-497965947620.asia-south1.run.app
+- **GitHub Repository:** https://github.com/keshav-1303/Civic-Pulse
 - **Demo video (optional):** <add link>
