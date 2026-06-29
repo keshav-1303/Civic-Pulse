@@ -1,4 +1,7 @@
 import { Firestore } from "@google-cloud/firestore";
+import fs from "fs";
+import path from "path";
+import os from "os";
 import { buildSeedIssues, SEED_USERS } from "./seed";
 import { BADGES, levelForPoints, POINTS } from "./gamification";
 import { slaInfo } from "./sla";
@@ -7,13 +10,38 @@ import type { Issue, IssueStatus, TimelineEvent, User } from "./types";
 let firestore: Firestore;
 let useMemoryDb = false;
 
-try {
-  firestore = new Firestore({
-    projectId: process.env.GOOGLE_CLOUD_PROJECT || "civic-pulse-13",
+function hasCredentials(): boolean {
+  if (process.env.K_SERVICE || process.env.COMPUTE_ENGINE_METADATA_HOST) {
+    return true;
+  }
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return true;
+  }
+  const home = os.homedir();
+  const paths = [
+    path.join(home, ".config", "gcloud", "application_default_credentials.json"),
+    path.join(process.env.APPDATA || "", "gcloud", "application_default_credentials.json"),
+  ];
+  return paths.some((p) => {
+    try {
+      return fs.existsSync(p);
+    } catch {
+      return false;
+    }
   });
-} catch (e) {
-  console.warn("Could not initialize Firestore client, using in-memory database:", e);
+}
+
+if (!hasCredentials()) {
   useMemoryDb = true;
+} else {
+  try {
+    firestore = new Firestore({
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || "civic-pulse-13",
+    });
+  } catch (e) {
+    console.warn("Could not initialize Firestore client, using in-memory database:", e);
+    useMemoryDb = true;
+  }
 }
 
 interface MemoryDB {
