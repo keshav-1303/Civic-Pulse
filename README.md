@@ -256,7 +256,7 @@ src/
       verifier.ts            # Resolution Verification Agent
 
     gemini.ts                # Gemini client + JSON helpers + fallback
-    store.ts                 # In-memory store (Firestore-ready abstraction)
+    store.ts                 # Firestore store (with local in-memory fallback)
     seed.ts
     types.ts
     gamification.ts
@@ -303,7 +303,7 @@ Set `SITE_URL` (runtime) or `NEXT_PUBLIC_SITE_URL` (build time) to your deployed
 
 # 📌 Notes
 
-* CivicPulse ships with an **in-memory datastore** seeded with realistic Bengaluru civic issues, making the demo immediately interactive.
-* The datastore is abstracted behind `lib/store.ts`, allowing seamless migration to **Firestore** or another production database.
+* CivicPulse uses **Google Cloud Firestore (Native Mode)** for production data persistence. On initial run, it automatically seeds Firestore with realistic Bengaluru civic issues, making the demo immediately interactive.
+* If run locally or during builds without Google Cloud credentials, the application automatically falls back to an **in-memory datastore**, ensuring local development and build pipelines remain green and operational out-of-the-box.
 * Every AI feature gracefully falls back to deterministic heuristics when no Gemini API key is configured, ensuring the application remains fully functional.
 * See **`SUBMISSION.md`** for the ready-to-submit hackathon project description, solution overview, technologies, and feature summary.
