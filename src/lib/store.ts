@@ -75,7 +75,7 @@ async function ensureDb() {
     }
     global.__CIVICPULSE_SEEDED__ = true;
   } catch (err) {
-    console.error("Failed to check/seed Firestore, falling back to in-memory database:", err);
+    console.log("No local Google Cloud credentials detected. Falling back to in-memory database.");
     useMemoryDb = true;
   }
 }
