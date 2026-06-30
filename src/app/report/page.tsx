@@ -113,9 +113,9 @@ export default function ReportPage() {
     setLocating(true);
     setError("");
     if (!navigator.geolocation) {
-      const randomLoc = BENGALURU_LOCATIONS[Math.floor(Math.random() * BENGALURU_LOCATIONS.length)];
-      setCoords({ lat: randomLoc.lat, lng: randomLoc.lng });
-      setWard(randomLoc.name);
+      setError("Geolocation is not supported by your browser. Please select your area manually.");
+      const currentWard = BENGALURU_LOCATIONS.find((l) => l.name === ward) || BENGALURU_LOCATIONS[0];
+      setCoords({ lat: currentWard.lat, lng: currentWard.lng });
       setLocating(false);
       return;
     }
@@ -145,9 +145,9 @@ export default function ReportPage() {
         setLocating(false);
       },
       () => {
-        const randomLoc = BENGALURU_LOCATIONS[Math.floor(Math.random() * BENGALURU_LOCATIONS.length)];
-        setCoords({ lat: randomLoc.lat, lng: randomLoc.lng });
-        setWard(randomLoc.name);
+        setError("Failed to detect location. Please verify browser location permissions or choose manually.");
+        const currentWard = BENGALURU_LOCATIONS.find((l) => l.name === ward) || BENGALURU_LOCATIONS[0];
+        setCoords({ lat: currentWard.lat, lng: currentWard.lng });
         setLocating(false);
       },
       { timeout: 6000 },
