@@ -21,8 +21,9 @@ import { fileToDataUrl } from "@/lib/format";
 import { LANGUAGES } from "@/lib/language";
 import type { AgentAnalysis, AgentStep, Issue } from "@/lib/types";
 import { AiBadge, CategoryChip, SeverityDots, UrgencyChip } from "@/components/ui";
+import { BENGALURU_LOCATIONS, haversine } from "@/lib/geo";
 
-const WARDS = ["Indiranagar", "Koramangala", "Jayanagar", "Whitefield", "HSR Layout", "Malleshwaram", "BTM Layout", "Marathahalli"];
+const WARDS = BENGALURU_LOCATIONS.map((l) => l.name).sort();
 
 type Phase = "form" | "analyzing" | "done";
 
@@ -110,18 +111,43 @@ export default function ReportPage() {
 
   function detectLocation() {
     setLocating(true);
+    setError("");
     if (!navigator.geolocation) {
-      setCoords({ lat: city.lat + (Math.random() - 0.5) * 0.02, lng: city.lng + (Math.random() - 0.5) * 0.02 });
+      const randomLoc = BENGALURU_LOCATIONS[Math.floor(Math.random() * BENGALURU_LOCATIONS.length)];
+      setCoords({ lat: randomLoc.lat, lng: randomLoc.lng });
+      setWard(randomLoc.name);
       setLocating(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const detectedCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        
+        let closest = BENGALURU_LOCATIONS[0];
+        let minD = haversine(detectedCoords, closest);
+        for (const loc of BENGALURU_LOCATIONS) {
+          const d = haversine(detectedCoords, loc);
+          if (d < minD) {
+            minD = d;
+            closest = loc;
+          }
+        }
+
+        const distanceToCenter = haversine(detectedCoords, { lat: 12.9716, lng: 77.5946 });
+        if (distanceToCenter > 30000 && minD > 20000) {
+          setError("We are currently operable in Bengaluru only, please wait for us to add this area.");
+          setLocating(false);
+          return;
+        }
+
+        setCoords(detectedCoords);
+        setWard(closest.name);
         setLocating(false);
       },
       () => {
-        setCoords({ lat: city.lat + (Math.random() - 0.5) * 0.02, lng: city.lng + (Math.random() - 0.5) * 0.02 });
+        const randomLoc = BENGALURU_LOCATIONS[Math.floor(Math.random() * BENGALURU_LOCATIONS.length)];
+        setCoords({ lat: randomLoc.lat, lng: randomLoc.lng });
+        setWard(randomLoc.name);
         setLocating(false);
       },
       { timeout: 6000 },
