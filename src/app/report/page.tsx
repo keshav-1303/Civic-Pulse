@@ -150,7 +150,7 @@ export default function ReportPage() {
         setCoords({ lat: currentWard.lat, lng: currentWard.lng });
         setLocating(false);
       },
-      { timeout: 6000 },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   }
 
