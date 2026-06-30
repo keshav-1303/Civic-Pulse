@@ -147,7 +147,7 @@ export default function DashboardPage() {
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: axisTick }} interval={1} />
               <YAxis tick={{ fontSize: 11, fill: axisTick }} allowDecimals={false} />
               <Tooltip />
-              <Area type="monotone" dataKey="reports" stroke="#16b783" strokeWidth={2.5} fill="url(#g)" />
+              <Area type="monotone" dataKey="reports" stroke="#16b783" strokeWidth={2.5} fill="url(#g)" isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -157,7 +157,7 @@ export default function DashboardPage() {
           <p className="mb-4 text-xs text-ink-400">Where issues stand</p>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
-              <Pie data={byStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3}>
+              <Pie data={byStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} isAnimationActive={false}>
                 {byStatus.map((e, i) => (<Cell key={i} fill={e.color} />))}
               </Pie>
               <Tooltip />
@@ -181,7 +181,7 @@ export default function DashboardPage() {
               <XAxis type="number" tick={{ fontSize: 11, fill: axisTick }} allowDecimals={false} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: axisTickStrong }} width={90} />
               <Tooltip cursor={{ fill: cursorFill }} />
-              <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+              <Bar dataKey="value" radius={[0, 6, 6, 0]} isAnimationActive={false}>
                 {byCategory.map((e, i) => (<Cell key={i} fill={e.color} />))}
               </Bar>
             </BarChart>
@@ -197,7 +197,7 @@ export default function DashboardPage() {
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: axisTick }} interval={0} angle={-15} textAnchor="end" height={50} />
               <YAxis tick={{ fontSize: 11, fill: axisTick }} allowDecimals={false} />
               <Tooltip cursor={{ fill: cursorFill }} />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#0284c7" />
+              <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="#0284c7" isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>

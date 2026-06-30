@@ -131,11 +131,20 @@ body {
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
     background-image: var(--glass-sheen);
+    /* GPU Hardware Layer Promotion */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
   }
   .glass,
-  .glass-bar,
-  .card {
+  .glass-bar {
     background-color: var(--glass-bg);
+  }
+  .card {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 1rem;
+  }
+  .dark .card {
+    background-color: rgba(22, 29, 45, 0.95);
   }
   .glass-strong {
     background-color: var(--glass-bg-strong);
@@ -148,13 +157,9 @@ body {
     backdrop-filter: url(#liquid-glass) blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
   }
   /* Non-refractive frosted surfaces (kept crisp + cheap) */
-  .card,
   .glass-control {
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) brightness(var(--glass-bright));
-  }
-  .card {
-    border-radius: 1rem;
   }
   .glass-control {
     background-color: var(--glass-bg-strong);
