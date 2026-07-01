@@ -27,6 +27,16 @@ export default function MapPage() {
   useEffect(() => {
     fetch("/api/issues").then((r) => r.json()).then((d) => setIssues(d.issues)).finally(() => setLoading(false));
     fetch("/api/meta").then((r) => r.json()).then((d) => d.city && setCity([d.city.lat, d.city.lng])).catch(() => {});
+    
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCity([pos.coords.latitude, pos.coords.longitude]);
+        },
+        () => {},
+        { timeout: 5000, enableHighAccuracy: false, maximumAge: 60000 }
+      );
+    }
   }, []);
 
   const filtered = useMemo(

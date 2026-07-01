@@ -23,8 +23,6 @@ import type { AgentAnalysis, AgentStep, Issue } from "@/lib/types";
 import { AiBadge, CategoryChip, SeverityDots, UrgencyChip } from "@/components/ui";
 import { BENGALURU_LOCATIONS, haversine } from "@/lib/geo";
 
-const WARDS = BENGALURU_LOCATIONS.map((l) => l.name).sort();
-
 type Phase = "form" | "analyzing" | "done";
 
 interface ReportResponse {
@@ -47,7 +45,7 @@ export default function ReportPage() {
   const [description, setDescription] = useState("");
   const [imageDataUrl, setImageDataUrl] = useState<string>("");
   const [address, setAddress] = useState("");
-  const [ward, setWard] = useState(WARDS[0]);
+  const [ward, setWard] = useState("");
   const [lang, setLang] = useState(LANGUAGES[0]);
   const [listening, setListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
@@ -113,41 +111,34 @@ export default function ReportPage() {
     setLocating(true);
     setError("");
     if (!navigator.geolocation) {
-      setError("Geolocation is not supported by your browser. Please select your area manually.");
-      const currentWard = BENGALURU_LOCATIONS.find((l) => l.name === ward) || BENGALURU_LOCATIONS[0];
-      setCoords({ lat: currentWard.lat, lng: currentWard.lng });
+      setError("Geolocation is not supported by your browser. Please enter your area manually.");
       setLocating(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const detectedCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        
-        let closest = BENGALURU_LOCATIONS[0];
-        let minD = haversine(detectedCoords, closest);
-        for (const loc of BENGALURU_LOCATIONS) {
-          const d = haversine(detectedCoords, loc);
-          if (d < minD) {
-            minD = d;
-            closest = loc;
+        try {
+          const res = await fetch(`/api/geocode?lat=${detectedCoords.lat}&lng=${detectedCoords.lng}`);
+          const data = await res.json();
+          if (!res.ok) {
+            setError(data.error || "Failed to resolve location.");
+            setLocating(false);
+            return;
           }
-        }
-
-        const distanceToCenter = haversine(detectedCoords, { lat: 12.9716, lng: 77.5946 });
-        if (distanceToCenter > 30000 && minD > 20000) {
-          setError("We are currently operable in Bengaluru only, please wait for us to add this area.");
+          setCoords(detectedCoords);
+          setWard(data.area);
+          if (data.address && !address) {
+            setAddress(data.address);
+          }
+        } catch (err) {
+          setError("Failed to resolve location. Please choose manually.");
+        } finally {
           setLocating(false);
-          return;
         }
-
-        setCoords(detectedCoords);
-        setWard(closest.name);
-        setLocating(false);
       },
       () => {
         setError("Failed to detect location. Please verify browser location permissions or choose manually.");
-        const currentWard = BENGALURU_LOCATIONS.find((l) => l.name === ward) || BENGALURU_LOCATIONS[0];
-        setCoords({ lat: currentWard.lat, lng: currentWard.lng });
         setLocating(false);
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
@@ -171,10 +162,14 @@ export default function ReportPage() {
       setError("Please describe the issue in a bit more detail.");
       return;
     }
+    if (!ward.trim()) {
+      setError("Please specify a ward or area.");
+      return;
+    }
     const location = {
       lat: coords?.lat ?? city.lat + (Math.random() - 0.5) * 0.02,
       lng: coords?.lng ?? city.lng + (Math.random() - 0.5) * 0.02,
-      address: address.trim() || `${ward}, ${"Bengaluru"}`,
+      address: address.trim() || ward,
       ward,
     };
 
@@ -304,11 +299,14 @@ export default function ReportPage() {
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div>
               <label className="label">Ward / Area</label>
-              <select value={ward} onChange={(e) => setWard(e.target.value)} className="input mt-2">
-                {WARDS.map((w) => (
-                  <option key={w}>{w}</option>
-                ))}
-              </select>
+              <input
+                type="text"
+                value={ward}
+                onChange={(e) => setWard(e.target.value)}
+                placeholder="e.g. Indiranagar, Bengaluru"
+                className="input mt-2"
+                required
+              />
             </div>
             <div>
               <label className="label">Location</label>
