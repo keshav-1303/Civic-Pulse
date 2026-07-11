@@ -14,7 +14,41 @@ export function timeAgo(iso: string): string {
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(reader.result as string);
+          return;
+        }
+
+        // Downscale image to a max dimension of 800px
+        const maxDim = 800;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to compressed JPEG data URL (quality: 0.7)
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+        resolve(compressedDataUrl);
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
