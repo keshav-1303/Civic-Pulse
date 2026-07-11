@@ -82,11 +82,44 @@ export default function IssueDetailPage() {
   async function submitProof() {
     setVerifying(true);
     setVerifyMsg("");
+
+    let lat: number | undefined;
+    let lng: number | undefined;
+
+    if (!navigator.geolocation) {
+      setVerifyMsg("⚠️ Geolocation is not supported by your browser.");
+      setVerifying(false);
+      return;
+    }
+
+    try {
+      setVerifyMsg("📍 Fetching your current location...");
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        });
+      });
+      lat = pos.coords.latitude;
+      lng = pos.coords.longitude;
+    } catch (err) {
+      setVerifyMsg("⚠️ Location permission is required to verify the fix on-site.");
+      setVerifying(false);
+      return;
+    }
+
+    setVerifyMsg("🤖 AI is analyzing the proof...");
     const res = await fetch(`/api/issues/${id}/verify-resolution`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ afterImageDataUrl: afterImage || undefined }),
+      body: JSON.stringify({
+        afterImageDataUrl: afterImage || undefined,
+        userLat: lat,
+        userLng: lng,
+      }),
     });
+
     if (res.ok) {
       const d = await res.json();
       setIssue(d.issue);
@@ -98,6 +131,9 @@ export default function IssueDetailPage() {
         setVerifyMsg("⚠️ Could not verify - issue still appears unresolved.");
       }
       setAfterImage("");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setVerifyMsg(d.error || "⚠️ Failed to verify resolution.");
     }
     setVerifying(false);
   }

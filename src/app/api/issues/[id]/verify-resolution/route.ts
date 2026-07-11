@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyResolution } from "@/lib/agents/resolutionVerify";
 import { getIssue, newId, setStatus, updateIssue } from "@/lib/store";
+import { haversine } from "@/lib/geo";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 45;
@@ -12,6 +13,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const body = await req.json().catch(() => ({}));
   const afterImageDataUrl = body.afterImageDataUrl as string | undefined;
+  const userLat = body.userLat as number | undefined;
+  const userLng = body.userLng as number | undefined;
+
+  if (userLat === undefined || userLng === undefined) {
+    return NextResponse.json({ error: "Location permissions are required to verify the fix." }, { status: 400 });
+  }
+
+  const distance = haversine(
+    { lat: userLat, lng: userLng },
+    { lat: issue.location.lat, lng: issue.location.lng }
+  );
+
+  const maxDistance = 250; // 250 meters
+  if (distance > maxDistance) {
+    return NextResponse.json(
+      { error: `Location mismatch: You must be near the reported issue (within ${maxDistance}m) to verify. You are currently ${Math.round(distance)}m away.` },
+      { status: 400 }
+    );
+  }
 
   const result = await verifyResolution(issue, afterImageDataUrl);
   const at = new Date().toISOString();
