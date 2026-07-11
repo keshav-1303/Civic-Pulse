@@ -65,11 +65,29 @@ export async function POST(req: NextRequest) {
       if (existing) {
         // Merge photos: add new images to the existing issue's gallery
         const existingImages = existing.imageUrls ?? (existing.imageUrl?.startsWith("data:") ? [existing.imageUrl] : []);
-        const mergedImages = [...existingImages, ...allImages.filter((img) => img.startsWith("data:"))];
+        const validNewImages = allImages.filter((img) => typeof img === "string" && img.startsWith("data:"));
+        const mergedImages = [...existingImages, ...validNewImages];
+        
+        const notes: string[] = [`${reporterName} independently reported the same issue - AI merged it as a confirmation (+1 confirmation).`];
+        if (validNewImages.length > 0) {
+          notes.push(`${validNewImages.length} new photo(s) added to the report.`);
+        }
+
+        const timeline = existing.timeline || [];
+        timeline.push({
+          id: newId("t"),
+          status: "comment",
+          note: notes.join(" "),
+          at: new Date().toISOString(),
+          by: reporterName,
+        });
+
         const updates: Partial<Issue> = {
           confirmations: existing.confirmations + 1,
           upvotes: existing.upvotes + 1,
+          timeline,
         };
+
         if (mergedImages.length > 0) {
           updates.imageUrls = mergedImages;
           // If the original had no real photo, set the primary image
@@ -77,20 +95,10 @@ export async function POST(req: NextRequest) {
             updates.imageUrl = primaryImage;
           }
         }
+        
         await updateIssue(existing.id, updates);
-
-        const notes: string[] = [`${reporterName} independently reported the same issue - AI merged it as a confirmation (+1 confirmation).`];
-        if (allImages.length > 0) {
-          notes.push(`${allImages.length} new photo(s) added to the report.`);
-        }
-        existing.timeline.push({
-          id: newId("t"),
-          status: "comment",
-          note: notes.join(" "),
-          at: new Date().toISOString(),
-          by: reporterName,
-        });
         await awardPoints(CURRENT_USER_ID, POINTS.confirmation, { verify: true });
+
         return NextResponse.json({
           duplicate: true,
           mergedInto: await getIssue(existing.id),
