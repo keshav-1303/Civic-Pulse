@@ -37,6 +37,7 @@ if (!hasCredentials()) {
   try {
     firestore = new Firestore({
       projectId: process.env.GOOGLE_CLOUD_PROJECT || "civic-pulse-13",
+      ignoreUndefinedProperties: true,
     });
   } catch (e) {
     console.warn("Could not initialize Firestore client, using in-memory database:", e);

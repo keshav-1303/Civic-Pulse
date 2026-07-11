@@ -482,7 +482,7 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     dedupeMethod,
     plan: plan.plan,
     reviewCorrected,
-    visionDescription,
+    ...(visionDescription ? { visionDescription } : {}),
   };
 
   return {
