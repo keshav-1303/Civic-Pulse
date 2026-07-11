@@ -35,15 +35,18 @@ export async function POST(req: NextRequest) {
       language?: string;
     };
 
-    if (!description || !location) {
-      return NextResponse.json({ error: "description and location are required" }, { status: 400 });
+    if (!location) {
+      return NextResponse.json({ error: "location is required" }, { status: 400 });
+    }
+    if ((!description || description.trim().length < 2) && !imageDataUrl) {
+      return NextResponse.json({ error: "Please provide a description or a photo" }, { status: 400 });
     }
 
     const user = await getUser(CURRENT_USER_ID);
     const reporterName = user?.name ?? "You";
 
     const result = await runPipeline({
-      description,
+      description: description ?? "",
       imageDataUrl,
       location,
       reporterName,
@@ -80,7 +83,7 @@ export async function POST(req: NextRequest) {
     const issue: Issue = {
       id: newId("iss"),
       title: result.title,
-      description,
+      description: description?.trim() || result.analysis.visionDescription || result.title,
       originalDescription: result.originalDescription,
       language: result.language,
       category: result.category,

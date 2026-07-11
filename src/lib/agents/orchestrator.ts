@@ -118,6 +118,7 @@ ${input.reporterName}
 }
 
 interface VisionOut { detected: string; hazards: string[]; visibleDetails: string[]; categoryHint: IssueCategory; }
+interface ImageDescribeOut { description: string; categoryHint: IssueCategory; }
 interface CatOut { category: IssueCategory; subcategory: string; title: string; tags: string[]; }
 interface SevOut { severity: number; urgency: Issue["urgency"]; riskToPublic: string; estimatedCost: string; }
 interface RouteOut { department: string; recommendedActions: string[]; draftedComplaint: string; }
@@ -139,6 +140,8 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   const steps: AgentStep[] = [];
   const originalDescription = input.description;
   const image = parseDataUrl(input.imageDataUrl);
+  const imageOnly = (!input.description || input.description.trim().length < 3) && Boolean(image);
+  let visionDescription: string | undefined;
 
   // ---------- 0. Planner Agent (decides the execution route) ----------
   const planStep = step("Planner Agent", "Routing the analysis", "🧭");
@@ -193,7 +196,7 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     const detected = input.languageHint && input.languageHint !== "English" ? input.languageHint : detectLanguageByScript(input.description);
     lang = { detectedLanguage: detected, englishText: input.description };
   }
-  const combinedText = lang.englishText;
+  let combinedText = lang.englishText;
   langStep.status = "done";
   langStep.durationMs = Date.now() - tL;
   langStep.reasoning =
@@ -204,10 +207,34 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   steps.push(langStep);
 
   // ---------- 2. Vision / Intake Agent ----------
-  const visionStep = step("Vision Intake Agent", "Analyzing photo & description", "👁️");
+  const visionStep = step("Vision Intake Agent", imageOnly ? "Analyzing photo (no text provided)" : "Analyzing photo & description", "👁️");
   const t0 = Date.now();
   let vision: VisionOut | null = null;
-  if (!isMock && plan.runVision) {
+
+  // Image-only mode: ask Gemini to describe what it sees so downstream agents have text to work with.
+  if (imageOnly && !isMock && image) {
+    const imgDesc = await geminiJSON<ImageDescribeOut>({
+      system:
+        "You are a municipal field-inspection vision agent. A citizen has submitted only a photo of a civic problem without any text description. Examine the photo carefully and write a clear, factual description (2-3 sentences) of the civic issue visible in the image. Also identify the most likely category. Categories: pothole, water_leakage, streetlight, waste, drainage, road_damage, public_safety, vegetation, electricity, graffiti, other.",
+      prompt: `The citizen submitted only a photo from ${input.location.address}. No description was provided. Examine the image and return JSON: {"description": string (2-3 sentence factual description of the civic issue visible), "categoryHint": one of the categories}.`,
+      image,
+      temperature: 0.3,
+    });
+    if (imgDesc?.description) {
+      visionDescription = imgDesc.description;
+      // Replace the empty combinedText with the AI-generated description for all downstream agents.
+      combinedText = imgDesc.description;
+      vision = {
+        detected: imgDesc.description,
+        hazards: [],
+        visibleDetails: imgDesc.description.split(/[.,]/).map((s) => s.trim()).filter(Boolean).slice(0, 3),
+        categoryHint: imgDesc.categoryHint ?? "other",
+      };
+    }
+  }
+
+  // Standard vision analysis (when citizen provided text, or image-only describe didn't run).
+  if (!vision && !isMock && plan.runVision) {
     vision = await geminiJSON<VisionOut>({
       system:
         "You are a municipal field-inspection vision agent. Analyze the citizen's photo and text describing a civic problem. Identify what is visible, immediate hazards, and the most likely issue category. Categories: pothole, water_leakage, streetlight, waste, drainage, road_damage, public_safety, vegetation, electricity, graffiti, other.",
@@ -229,7 +256,9 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
   }
   visionStep.status = "done";
   visionStep.durationMs = Date.now() - t0;
-  visionStep.reasoning = `Examined ${image ? "the uploaded photo and " : ""}the report text. ${vision.detected}`;
+  visionStep.reasoning = imageOnly && visionDescription
+    ? `No text provided - generated a description from the photo alone: "${visionDescription.slice(0, 120)}${visionDescription.length > 120 ? "…" : ""}"`
+    : `Examined ${image ? "the uploaded photo and " : ""}the report text. ${vision.detected}`;
   visionStep.output = vision as unknown as Record<string, unknown>;
   steps.push(visionStep);
 
@@ -453,6 +482,7 @@ export async function runPipeline(input: PipelineInput): Promise<PipelineResult>
     dedupeMethod,
     plan: plan.plan,
     reviewCorrected,
+    visionDescription,
   };
 
   return {

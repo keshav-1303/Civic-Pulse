@@ -158,8 +158,8 @@ export default function ReportPage() {
 
   async function submit() {
     setError("");
-    if (description.trim().length < 8) {
-      setError("Please describe the issue in a bit more detail.");
+    if (description.trim().length < 8 && !imageDataUrl) {
+      setError("Please describe the issue or add a photo so our AI can identify the problem.");
       return;
     }
     if (!ward.trim()) {
@@ -233,7 +233,7 @@ export default function ReportPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left: form */}
         <div className={`card p-6 ${phase !== "form" ? "opacity-60 pointer-events-none" : ""}`}>
-          <label className="label">Photo (optional, but boosts AI accuracy)</label>
+          <label className="label">Photo (a photo alone is enough — AI auto-describes the issue)</label>
           <label className="mt-2 flex h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink-200 bg-ink-50/60 text-ink-400 transition hover:border-brand-300 hover:bg-brand-50/40">
             {imageDataUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
