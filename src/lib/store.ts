@@ -319,5 +319,27 @@ export async function communityStats() {
   const critical = issues.filter((i) => i.urgency === "critical" && i.status !== "resolved").length;
   const slaBreaches = issues.filter((i) => slaInfo(i).state === "breached").length;
   const resolutionRate = total ? Math.round((resolved / total) * 100) : 0;
-  return { total, resolved, inProgress, critical, slaBreaches, resolutionRate };
+
+  let totalResponseTimeMs = 0;
+  let responseCount = 0;
+  for (const i of issues) {
+    if (i.timeline && i.timeline.length > 1) {
+      const createdTime = new Date(i.createdAt).getTime();
+      const firstResponseEvent = i.timeline
+        .filter((e) => e.status !== "reported")
+        .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())[0];
+      if (firstResponseEvent) {
+        const diff = new Date(firstResponseEvent.at).getTime() - createdTime;
+        if (diff > 0) {
+          totalResponseTimeMs += diff;
+          responseCount++;
+        }
+      }
+    }
+  }
+  const avgFirstResponseHours = responseCount
+    ? Math.round((totalResponseTimeMs / (1000 * 60 * 60 * responseCount)) * 10) / 10
+    : 24.5; // fallback to seed averages if no data yet
+
+  return { total, resolved, inProgress, critical, slaBreaches, resolutionRate, avgFirstResponseHours };
 }

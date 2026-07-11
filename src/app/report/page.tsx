@@ -249,28 +249,35 @@ export default function ReportPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Left: form */}
         <div className={`card p-6 ${phase !== "form" ? "opacity-60 pointer-events-none" : ""}`}>
-          <label className="label">Photos (a photo alone is enough — AI auto-describes the issue)</label>
+          <label className="label">Photos or Videos (a file alone is enough — AI auto-describes the issue)</label>
           {imageDataUrls.length > 0 && (
             <div className="mt-2 flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-              {imageDataUrls.map((url, i) => (
-                <div key={i} className="relative shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`preview ${i + 1}`} className="h-24 w-24 rounded-xl object-cover border border-ink-200" />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(i)}
-                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
+              {imageDataUrls.map((url, i) => {
+                const isVideo = url.startsWith("data:video/");
+                return (
+                  <div key={i} className="relative shrink-0">
+                    {isVideo ? (
+                      <video src={url} className="h-24 w-24 rounded-xl object-cover border border-ink-200" />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={url} alt={`preview ${i + 1}`} className="h-24 w-24 rounded-xl object-cover border border-ink-200" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow-sm hover:bg-red-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
           <label className="mt-2 flex h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink-200 bg-ink-50/60 text-ink-400 transition hover:border-brand-300 hover:bg-brand-50/40">
             <Camera className="h-7 w-7" />
-            <span className="text-sm font-medium">{imageDataUrls.length > 0 ? "Add more photos" : "Tap to add photos"}</span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={onFile} />
+            <span className="text-sm font-medium">{imageDataUrls.length > 0 ? "Add more files" : "Tap to add photos/videos"}</span>
+            <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={onFile} />
           </label>
 
           <div className="mt-5 flex items-center justify-between">

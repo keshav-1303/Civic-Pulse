@@ -53,11 +53,19 @@ export default function ImageCarousel({
 
   const current = images[idx];
   const isDataImage = current?.startsWith("data:");
+  const isVideo = current?.startsWith("data:video/") || current?.endsWith(".mp4") || current?.endsWith(".webm") || current?.endsWith(".ogg");
 
   return (
     <div className={`group relative flex items-center justify-center overflow-hidden bg-gradient-to-br from-ink-100 to-ink-50 ${heightClass}`}>
-      {/* Current image */}
-      {isDataImage ? (
+      {/* Current media */}
+      {isVideo ? (
+        <video
+          src={current}
+          controls
+          className="h-full w-full object-cover"
+          key={idx}
+        />
+      ) : isDataImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={current}
