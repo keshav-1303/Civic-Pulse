@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUp, CheckCircle2, MapPin } from "lucide-react";
+import { ArrowUp, CheckCircle2, MapPin, Images } from "lucide-react";
 import { CategoryChip, SeverityDots, SlaBadge, StatusPill, UrgencyChip } from "./ui";
 import { timeAgo } from "@/lib/format";
 import { slaInfo } from "@/lib/sla";
 import type { Issue } from "@/lib/types";
 
 export default function IssueCard({ issue }: { issue: Issue }) {
-  const isDataImage = issue.imageUrl?.startsWith("data:");
+  const allImages = issue.imageUrls?.length ? issue.imageUrls : issue.imageUrl ? [issue.imageUrl] : [];
+  const primaryImage = allImages[0];
+  const isDataImage = primaryImage?.startsWith("data:");
   const sla = slaInfo(issue);
   return (
     <Link
@@ -18,9 +20,9 @@ export default function IssueCard({ issue }: { issue: Issue }) {
       <div className="relative flex h-32 items-center justify-center overflow-hidden bg-gradient-to-br from-ink-100 to-ink-50">
         {isDataImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={issue.imageUrl} alt={issue.title} className="h-full w-full object-cover" />
+          <img src={primaryImage} alt={issue.title} className="h-full w-full object-cover" />
         ) : (
-          <span className="text-5xl opacity-80 transition-transform group-hover:scale-110">{issue.imageUrl}</span>
+          <span className="text-5xl opacity-80 transition-transform group-hover:scale-110">{primaryImage}</span>
         )}
         <div className="absolute left-3 top-3">
           <StatusPill status={issue.status} />
@@ -29,6 +31,12 @@ export default function IssueCard({ issue }: { issue: Issue }) {
           <div className="absolute right-3 top-3">
             <UrgencyChip urgency={issue.urgency} />
           </div>
+        )}
+        {allImages.length > 1 && (
+          <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/40 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+            <Images className="h-3 w-3" />
+            {allImages.length}
+          </span>
         )}
       </div>
 

@@ -24,6 +24,7 @@ import { CATEGORY_META, STATUS_META, type Issue, type IssueStatus } from "@/lib/
 import { AiBadge, CategoryChip, SeverityDots, SlaBadge, StatusPill, UrgencyChip } from "@/components/ui";
 import { timeAgo, fileToDataUrl } from "@/lib/format";
 import { slaInfo, SLA_STATE_META } from "@/lib/sla";
+import ImageCarousel from "@/components/ImageCarousel";
 
 const IssuesMap = dynamic(() => import("@/components/IssuesMap"), { ssr: false });
 
@@ -89,7 +90,13 @@ export default function IssueDetailPage() {
     if (res.ok) {
       const d = await res.json();
       setIssue(d.issue);
-      setVerifyMsg(d.result.verified ? "✅ Verified & resolved!" : "⚠️ Could not verify - issue still appears unresolved.");
+      if (d.result.verified) {
+        setVerifyMsg("✅ Verified & resolved! Issue has been marked as resolved.");
+        setToast("🎉 Issue resolved! +100 points");
+        setTimeout(() => setToast(""), 3000);
+      } else {
+        setVerifyMsg("⚠️ Could not verify - issue still appears unresolved.");
+      }
       setAfterImage("");
     }
     setVerifying(false);
@@ -122,6 +129,13 @@ export default function IssueDetailPage() {
   const analysis = issue.analysis;
   const sla = slaInfo(issue);
 
+  // Build images array for carousel (prefer imageUrls, fall back to imageUrl)
+  const allImages: string[] = issue.imageUrls?.length
+    ? issue.imageUrls
+    : issue.imageUrl
+      ? [issue.imageUrl]
+      : [];
+
   return (
     <div className="mx-auto max-w-5xl">
       <Link href="/issues" className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800">
@@ -142,14 +156,9 @@ export default function IssueDetailPage() {
         <div className="space-y-6 lg:col-span-2">
           {/* Header card */}
           <div className="card overflow-hidden">
-            <div className="relative flex h-52 items-center justify-center bg-gradient-to-br from-ink-100 to-ink-50">
-              {isDataImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={issue.imageUrl} alt={issue.title} className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-7xl opacity-80">{issue.imageUrl}</span>
-              )}
-              <div className="absolute left-4 top-4 flex gap-2">
+            <div className="relative">
+              <ImageCarousel images={allImages} alt={issue.title} showHint />
+              <div className="absolute left-4 top-4 flex gap-2 z-10">
                 <StatusPill status={issue.status} />
                 <UrgencyChip urgency={issue.urgency} />
               </div>

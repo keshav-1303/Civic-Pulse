@@ -120,7 +120,8 @@ export interface Issue {
   urgency: "low" | "medium" | "high" | "critical";
   status: IssueStatus;
   location: GeoLocation;
-  imageUrl?: string; // emoji/placeholder or data URL
+  imageUrl?: string; // emoji/placeholder or data URL (primary image)
+  imageUrls?: string[]; // all images (data URLs or emoji placeholders)
   reporterId: string;
   reporterName: string;
   createdAt: string;
