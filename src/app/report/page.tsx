@@ -95,10 +95,23 @@ export default function ReportPage() {
       setDescription((finalText + interim).trimStart());
     };
     rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
+    rec.onerror = (e: any) => {
+      setListening(false);
+      console.warn("Speech recognition error:", e.error);
+      if (e.error === "not-allowed") {
+        setError("Microphone permission denied. Please allow microphone access in your browser's address bar settings.");
+      } else if (e.error === "no-speech") {
+        setError("No speech was detected. Please try speaking closer to your microphone.");
+      } else if (e.error === "network") {
+        setError("Network error: Google speech recognition service could not be reached.");
+      } else {
+        setError(`Voice recognition failed: ${e.error}`);
+      }
+    };
     recognitionRef.current = rec;
     rec.start();
     setListening(true);
+    setError("");
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
