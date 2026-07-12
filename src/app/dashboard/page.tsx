@@ -31,7 +31,7 @@ const INSIGHT_STYLE: Record<string, string> = {
 
 export default function DashboardPage() {
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [stats, setStats] = useState<{ total: number; resolved: number; inProgress: number; critical: number; slaBreaches: number; resolutionRate: number } | null>(null);
+  const [stats, setStats] = useState<{ total: number; resolved: number; inProgress: number; critical: number; slaBreaches: number; resolutionRate: number; avgFirstResponseHours: number } | null>(null);
   const [insights, setInsights] = useState<InsightsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const isDark = useIsDark();
@@ -211,7 +211,7 @@ export default function DashboardPage() {
         </div>
         <div className="card flex items-center gap-4 p-5">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300"><Clock className="h-6 w-6" /></div>
-          <div><div className="text-2xl font-bold">~28h</div><div className="text-xs text-ink-400">Avg. first response</div></div>
+          <div><div className="text-2xl font-bold">~{stats?.avgFirstResponseHours ?? 0}h</div><div className="text-xs text-ink-400">Avg. first response</div></div>
         </div>
         <div className="card flex items-center gap-4 p-5">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"><TrendingUp className="h-6 w-6" /></div>

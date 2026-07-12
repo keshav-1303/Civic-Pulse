@@ -223,3 +223,42 @@ export async function geminiText(args: TextArgs): Promise<string | null> {
     return null;
   }
 }
+
+/** Transcribes an audio base64 payload to text using Gemini. */
+export async function geminiTranscribe(
+  base64Data: string,
+  mimeType: string,
+  languageLabel: string = "English"
+): Promise<string | null> {
+  const ai = getClient();
+  if (!ai) return null;
+  try {
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `Transcribe the following spoken audio accurately in ${languageLabel}. If you detect a different language, transcribe it in that language. Respond ONLY with the transcription text. Do not add any conversational text, greetings, explanations, or metadata. Just return the raw text.`,
+            },
+            {
+              inlineData: {
+                mimeType,
+                data: base64Data,
+              },
+            },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0.1,
+      },
+    });
+    return response.text?.trim() ?? null;
+  } catch (err) {
+    console.error("[gemini] transcribe call failed:", (err as Error).message);
+    return null;
+  }
+}
+

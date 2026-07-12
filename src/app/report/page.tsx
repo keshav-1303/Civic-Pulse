@@ -51,6 +51,10 @@ export default function ReportPage() {
   const [listening, setListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const [isFallbackRecording, setIsFallbackRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [city, setCity] = useState<{ lat: number; lng: number }>({ lat: 12.9716, lng: 77.5946 });
   const [locating, setLocating] = useState(false);
@@ -67,19 +71,102 @@ export default function ReportPage() {
       .then((d) => d.city && setCity({ lat: d.city.lat, lng: d.city.lng }))
       .catch(() => {});
     if (typeof window !== "undefined") {
-      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      setVoiceSupported(Boolean(SR));
+      setVoiceSupported(typeof navigator !== "undefined" && Boolean(navigator.mediaDevices));
     }
   }, []);
 
+  async function startFallbackRecording() {
+    try {
+      setError("");
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let recorder: MediaRecorder;
+      try {
+        recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      } catch (e) {
+        recorder = new MediaRecorder(stream);
+      }
+
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        setIsTranscribing(true);
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            const base64DataUrl = reader.result as string;
+            try {
+              const res = await fetch("/api/transcribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  audio: base64DataUrl,
+                  language: lang.label,
+                }),
+              });
+              const data = await res.json();
+              if (data.text) {
+                setDescription((prev) => (prev ? prev + " " + data.text : data.text));
+              } else {
+                setError(data.error || "Failed to transcribe audio.");
+              }
+            } catch (err) {
+              console.error("Transcribe API error:", err);
+              setError("Failed to connect to transcription service.");
+            } finally {
+              setIsTranscribing(false);
+            }
+          };
+        } catch (err) {
+          console.error("Audio conversion failed:", err);
+          setError("Failed to process recorded audio.");
+          setIsTranscribing(false);
+        }
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsFallbackRecording(true);
+    } catch (err) {
+      console.error("Microphone access error:", err);
+      setError("Microphone permission denied or unavailable.");
+    }
+  }
+
+  function stopFallbackRecording() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsFallbackRecording(false);
+  }
+
   function toggleVoice() {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return;
+    if (isTranscribing) return;
+
+    if (isFallbackRecording) {
+      stopFallbackRecording();
+      return;
+    }
+
     if (listening) {
       recognitionRef.current?.stop();
       setListening(false);
       return;
     }
+
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      startFallbackRecording();
+      return;
+    }
+
     const rec = new SR();
     rec.lang = lang.code;
     rec.interimResults = true;
@@ -98,12 +185,15 @@ export default function ReportPage() {
     rec.onerror = (e: any) => {
       setListening(false);
       console.warn("Speech recognition error:", e.error);
-      if (e.error === "not-allowed") {
+      if (e.error === "network") {
+        setError("Network error: Web Speech API unreachable. Switching to local audio recording fallback...");
+        setTimeout(() => {
+          startFallbackRecording();
+        }, 1000);
+      } else if (e.error === "not-allowed") {
         setError("Microphone permission denied. Please allow microphone access in your browser's address bar settings.");
       } else if (e.error === "no-speech") {
         setError("No speech was detected. Please try speaking closer to your microphone.");
-      } else if (e.error === "network") {
-        setError("Network error: Google speech recognition service could not be reached.");
       } else {
         setError(`Voice recognition failed: ${e.error}`);
       }
@@ -320,16 +410,25 @@ export default function ReportPage() {
               <button
                 type="button"
                 onClick={toggleVoice}
-                title={`Speak in ${lang.native}`}
+                title={isTranscribing ? "Transcribing…" : `Speak in ${lang.native}`}
                 className={`absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-lg transition ${
-                  listening ? "bg-red-500 text-white animate-pulse" : "bg-brand-50 text-brand-600 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
+                  listening || isFallbackRecording
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-brand-50 text-brand-600 hover:bg-brand-100 dark:bg-brand-500/15 dark:text-brand-300 dark:hover:bg-brand-500/25"
                 }`}
+                disabled={isTranscribing}
               >
-                <Mic className="h-4 w-4" />
+                {isTranscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
               </button>
             )}
           </div>
           {listening && <p className="mt-1 text-xs font-medium text-red-500">🎙️ Listening in {lang.native}… tap the mic to stop.</p>}
+          {isFallbackRecording && <p className="mt-1 text-xs font-medium text-red-500">🎙️ Recording audio (Backup mode)… tap the mic to stop & transcribe.</p>}
+          {isTranscribing && (
+            <p className="mt-1 text-xs font-medium text-brand-600 dark:text-brand-400 flex items-center gap-1">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-500" /> AI is transcribing your voice…
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap gap-1.5">
             {EXAMPLES.map((ex) => (
               <button
