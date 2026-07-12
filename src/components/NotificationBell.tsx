@@ -66,7 +66,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="glass-strong absolute right-0 mt-2 w-80 overflow-hidden rounded-xl shadow-xl">
+        <div className="absolute right-0 mt-2 w-80 overflow-hidden rounded-xl border border-ink-100 bg-white shadow-xl dark:border-ink-200 dark:bg-slate-900 z-50">
           <div className="flex items-center justify-between border-b border-ink-100 px-4 py-2.5">
             <span className="text-sm font-semibold text-ink-800">Notifications</span>
             <span className="text-xs text-ink-400">Your reports</span>
