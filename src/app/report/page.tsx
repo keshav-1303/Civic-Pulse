@@ -406,7 +406,7 @@ export default function ReportPage() {
               placeholder={lang.code === "en-IN" ? "e.g. There's a deep pothole near the bus stop that fills with water…" : `Type or speak in ${lang.native}…`}
               className="input resize-none pr-12"
             />
-            {false && voiceSupported && (
+            {voiceSupported && (
               <button
                 type="button"
                 onClick={toggleVoice}

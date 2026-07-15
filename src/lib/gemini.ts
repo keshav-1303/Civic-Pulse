@@ -4,16 +4,13 @@ export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 export const EMBED_MODEL = process.env.GEMINI_EMBED_MODEL || "text-embedding-004";
 
 export function hasGeminiKey(): boolean {
-  const hasGemini = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0);
-  const hasOR = Boolean(process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.trim().length > 0);
-  return hasGemini || hasOR;
+  return Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0);
 }
 
 let client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI | null {
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey || geminiKey.trim().length === 0) return null;
-  if (!client) client = new GoogleGenAI({ apiKey: geminiKey });
+  if (!hasGeminiKey()) return null;
+  if (!client) client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
   return client;
 }
 
@@ -61,43 +58,27 @@ interface JSONArgs {
 /** Calls Gemini expecting a JSON object. Returns null on any failure (callers fall back to heuristics). */
 export async function geminiJSON<T>(args: JSONArgs): Promise<T | null> {
   const ai = getClient();
-  if (ai) {
-    try {
-      const parts: Array<Record<string, unknown>> = [{ text: args.prompt }];
-      if (args.image) {
-        parts.push({ inlineData: { mimeType: args.image.mimeType, data: args.image.data } });
-      }
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents: [{ role: "user", parts }],
-        config: {
-          systemInstruction: args.system,
-          responseMimeType: "application/json",
-          ...(args.responseSchema ? { responseSchema: args.responseSchema } : {}),
-          temperature: args.temperature ?? 0.4,
-        },
-      });
-      const parsed = extractJSON<T>(response.text ?? "");
-      if (parsed) return parsed;
-    } catch (err: any) {
-      console.error("[gemini] JSON call failed, trying OpenRouter fallback:", err.message);
+  if (!ai) return null;
+  try {
+    const parts: Array<Record<string, unknown>> = [{ text: args.prompt }];
+    if (args.image) {
+      parts.push({ inlineData: { mimeType: args.image.mimeType, data: args.image.data } });
     }
-  }
-
-  if (process.env.OPENROUTER_API_KEY) {
-    console.log("[openrouter] calling JSON fallback...");
-    const altText = await callOpenRouter({
-      system: args.system,
-      prompt: args.prompt,
-      image: args.image,
-      temperature: args.temperature,
-      json: true,
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: [{ role: "user", parts }],
+      config: {
+        systemInstruction: args.system,
+        responseMimeType: "application/json",
+        ...(args.responseSchema ? { responseSchema: args.responseSchema } : {}),
+        temperature: args.temperature ?? 0.4,
+      },
     });
-    if (altText) {
-      return extractJSON<T>(altText);
-    }
+    return extractJSON<T>(response.text ?? "");
+  } catch (err) {
+    console.error("[gemini] JSON call failed:", (err as Error).message);
+    return null;
   }
-  return null;
 }
 
 /** A single tool invocation recorded during an agentic tool-calling loop (for UI/trace). */
@@ -222,36 +203,25 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
 export async function geminiText(args: TextArgs): Promise<string | null> {
   const ai = getClient();
-  if (ai) {
-    try {
-      const contents = [
-        ...(args.history?.map((h) => ({ role: h.role, parts: [{ text: h.text }] })) ?? []),
-        { role: "user" as const, parts: [{ text: args.prompt }] },
-      ];
-      const response = await ai.models.generateContent({
-        model: GEMINI_MODEL,
-        contents,
-        config: {
-          systemInstruction: args.system,
-          temperature: args.temperature ?? 0.6,
-        },
-      });
-      if (response.text) return response.text;
-    } catch (err: any) {
-      console.error("[gemini] text call failed, trying OpenRouter fallback:", err.message);
-    }
-  }
-
-  if (process.env.OPENROUTER_API_KEY) {
-    console.log("[openrouter] calling text fallback...");
-    return await callOpenRouter({
-      system: args.system,
-      prompt: args.prompt,
-      temperature: args.temperature,
-      json: false,
+  if (!ai) return null;
+  try {
+    const contents = [
+      ...(args.history?.map((h) => ({ role: h.role, parts: [{ text: h.text }] })) ?? []),
+      { role: "user" as const, parts: [{ text: args.prompt }] },
+    ];
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents,
+      config: {
+        systemInstruction: args.system,
+        temperature: args.temperature ?? 0.6,
+      },
     });
+    return response.text ?? null;
+  } catch (err) {
+    console.error("[gemini] text call failed:", (err as Error).message);
+    return null;
   }
-  return null;
 }
 
 /** Transcribes an audio base64 payload to text using Gemini. */
@@ -288,55 +258,6 @@ export async function geminiTranscribe(
     return response.text?.trim() ?? null;
   } catch (err) {
     console.error("[gemini] transcribe call failed:", (err as Error).message);
-    return null;
-  }
-}
-
-async function callOpenRouter(args: {
-  system: string;
-  prompt: string;
-  image?: ImageInput | null;
-  temperature?: number;
-  json?: boolean;
-}): Promise<string | null> {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return null;
-
-  try {
-    const userContent: any[] = [{ type: "text", text: args.prompt }];
-
-    const messages = [
-      { role: "system", content: args.system },
-      { role: "user", content: userContent }
-    ];
-
-    const body: any = {
-      model: "tencent/hy3:free",
-      messages,
-      temperature: args.temperature ?? 0.3,
-    };
-
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${key}`,
-        "HTTP-Referer": "https://civicpulse-497965947620.asia-south1.run.app",
-        "X-Title": "CivicPulse"
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error(`[openrouter] status: ${res.status}, response: ${errText}`);
-      return null;
-    }
-
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content ?? null;
-  } catch (e) {
-    console.error("[openrouter] error:", e);
     return null;
   }
 }
